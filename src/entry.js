@@ -21,34 +21,42 @@ window.onload = function () {
     let gridPaper = new GridPaper("myCanvas", BOARD_WIDTH, BOARD_HEIGHT, GRID_SIZE,
         INITIAL_ZOOM, ZOOM_UNIT, AVAILABLE_ZOOM_MIN, AVAILABLE_ZOOM_MAX);
 
-    gridPaper.init();
+    // gridPaper.init();
 
-    var canvasWidth = $("#myCanvas")[0].width;
-    var canvasHeight = $("#myCanvas")[0].height;
+    let canvasElem = $("#myCanvas")[0];
 
-    $("#canvasSize")[0].innerHTML = "canvas size: " + $("#myCanvas")[0].width + ", " + $("#myCanvas")[0].height;
+    $("#canvasSize")[0].innerHTML = "canvas size: " + canvasElem.width + ", " + canvasElem.height;
     $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
 
 
-    var tool = new Tool();
+    let tool = new Tool();
 
     tool.onMouseMove = function (event) {
         $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
         $("#delta")[0].innerHTML = "delta: " + event.delta.x + ", " + event.delta.y;
-    }
+        $("#canvasSize")[0].innerHTML = "canvas size: " + canvasElem.width + ", " + canvasElem.height;
+        $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
+    };
 
     tool.onMouseDown = function (event) {
         $("#downPoint")[0].innerHTML = "down point: " + event.downPoint.x + ", " + event.downPoint.y;
         $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
-    }
+    };
 
     tool.onMouseDrag = function (event) {
         gridPaper.paperOnMouseDrag(event);
+
+        $("#viewRange")[0].innerHTML = "view range: (" + gridPaper.viewCenterMin.x + "," + gridPaper.viewCenterMin.y + ") - (" + gridPaper.viewCenterMax.x + "," + gridPaper.viewCenterMax.y + ")";
+        $("#viewCenter")[0].innerHTML = "view center: " + view.center.x + ", " + view.center.y;
     };
 
 
     window.addEventListener('mousemove', function(e){
         gridPaper.windowOnMouseMove(e);
+
+        $("#cursorPoint")[0].innerHTML = "cursor point: " + gridPaper.cursorPoint.x + ", " + gridPaper.cursorPoint.y;
+        $("#cursorDelta")[0].innerHTML = "cursor delta: " + gridPaper.cursorDelta.x + ", " + gridPaper.cursorDelta.y;
+        $("#canvasPoint")[0].innerHTML = "canvas point: " + gridPaper.canvasPoint.x + ", " + gridPaper.canvasPoint.y;
     });
 
 

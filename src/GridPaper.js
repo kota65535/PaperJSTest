@@ -24,9 +24,22 @@ export class GridPaper {
         this.zoomUnit = zoomUnit;
         this.zoomMin = zoomMin;
         this.zoomMax = zoomMax;
+
+        this._init();
     }
 
-    init() {
+    _init() {
+        this.initialViewSize = new Size(view.size);
+        this.viewCenterMin = new Point(view.size.width - this.boardWidth / 2, view.size.height - this.boardHeight / 2);
+        this.viewCenterMax = new Point(this.boardWidth / 2, this.boardHeight / 2);
+        this.boardMin = new Point(view.size.width / 2 - this.boardWidth / 2, view.size.height / 2 - this.boardHeight / 2);
+        this.boardMax = new Point(view.size.width / 2 + this.boardWidth / 2, view.size.height / 2 + this.boardHeight / 2);
+
+        console.log("viewCenterMin ", this.viewCenterMin);
+        console.log("viewCenterMax ", this.viewCenterMax);
+        console.log("boardMin ", this.boardMin);
+        console.log("boardMax ", this.boardMax);
+
         // center of the view at first
         new Path.Circle({
             center: view.center,
@@ -48,17 +61,6 @@ export class GridPaper {
             fillColor: 'blue'
         });
 
-
-        this.initialViewSize = new Size(view.size);
-        this.viewCenterMin = new Point(view.size.width - this.boardWidth / 2, view.size.height - this.boardHeight / 2);
-        this.viewCenterMax = new Point(this.boardWidth / 2, this.boardHeight / 2);
-        this.boardMin = new Point(view.size.width / 2 - this.boardWidth / 2, view.size.height / 2 - this.boardHeight / 2);
-        this.boardMax = new Point(view.size.width / 2 + this.boardWidth / 2, view.size.height / 2 + this.boardHeight / 2);
-
-        console.log("viewCenterMin ", this.viewCenterMin);
-        console.log("viewCenterMax ", this.viewCenterMax);
-        console.log("boardMin ", this.boardMin);
-        console.log("boardMax ", this.boardMax);
 
         // top-left of the board
         new Path.Circle({
@@ -87,37 +89,6 @@ export class GridPaper {
             radius: 50,
             fillColor: 'red'
         });
-
-//        new Path.Circle({
-//            center: new Point(-width, height*2),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-//        new Path.Circle({
-//            center: new Point(width*2, height*2),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-//        new Path.Circle({
-//            center: new Point(width*2, -height),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-//        new Path.Circle({
-//            center: new Point(width*2, 0),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-//        new Path.Circle({
-//            center: new Point(width*2, height),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
-//        new Path.Circle({
-//            center: new Point(width*2, height*2),
-//            radius: 100,
-//            fillColor: 'green'
-//        });
 
         this._createGrids(this.gridSize);
     }
@@ -153,18 +124,13 @@ export class GridPaper {
         })
     }
 
-    paperOnMouseMove(event) {
-//        view.viewSize = new Size(view.size.width/2, view.size.height/2);
 
-        $("#canvasSize")[0].innerHTML = "canvas size: " + $("#myCanvas")[0].width + ", " + $("#myCanvas")[0].height;
-        $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
-
-    }
-
-
-    // カーソルの移動量に応じてビューを移動させる。
-    // 移動量はページ上のマウスカーソルの位置を利用する。
-    // 注: キャンバス上のマウスカーソルの位置は使えない。
+    /**
+     * Paper.js の Tool.onMouseDrag() で実行させるハンドラ。
+     * カーソルの移動量に応じてビューを移動させる。
+     * 移動量の算出にはキャンバス上のマウスカーソルの位置ではなく、ページ上の位置を利用する。
+     * @param event
+     */
     paperOnMouseDrag(event) {
         // 移動量をスケールに応じて変化させる
         let moveUnit = 1 / view.getScaling().x;
@@ -187,28 +153,31 @@ export class GridPaper {
         }
 
         view.center = nextCenter;
-
-        $("#viewRange")[0].innerHTML = "view range: (" + this.viewCenterMin.x + "," + this.viewCenterMin.y + ") - (" + this.viewCenterMax.x + "," + this.viewCenterMax.y + ")";
-        $("#viewCenter")[0].innerHTML = "view center: " + view.center.x + ", " + view.center.y;
     }
 
 
+    /**
+     * Windowの mousemove イベントで実行させるハンドラ。
+     * ページ上のマウスカーソルの位置と、対応するキャンバス上のマウスカーソルの位置を更新する。
+     * @param e
+     */
     windowOnMouseMove(e) {
         // ページ上のマウスカーソルの位置を更新
-        var cursorBefore = this.cursorPoint;
+        let cursorBefore = this.cursorPoint;
         this.cursorPoint = new Point(e.pageX, e.pageY);
         this.cursorDelta = this.cursorPoint.subtract(cursorBefore);
 
         // キャンバス上のマウスカーソルの位置を更新
-        var point = paper.DomEvent.getOffset(e, $('#myCanvas')[0]);
+        let point = paper.DomEvent.getOffset(e, this.canvasElem);
         this.canvasPoint = paper.view.viewToProject(point);
 
-        $("#cursorPoint")[0].innerHTML = "cursor point: " + this.cursorPoint.x + ", " + this.cursorPoint.y;
-        $("#cursorDelta")[0].innerHTML = "cursor delta: " + this.cursorDelta.x + ", " + this.cursorDelta.y;
-        $("#canvasPoint")[0].innerHTML = "canvas point: " + point.x + ", " + point.y;
     }
 
-    // ホイールの移動量に応じてビューを拡大・縮小する。
+    /**
+     * Windowの mousewheel イベントで実行させるハンドラ。
+     * ホイールの移動量に応じてビューを拡大・縮小する。
+     * @param e
+     */
     windowOnMouseWheel(e) {
         $("#wheelDelta")[0].innerHTML = "wheelDelta: " + e.wheelDelta;
 
