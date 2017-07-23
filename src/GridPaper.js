@@ -1,5 +1,8 @@
-
-
+/**
+ * ドラッグで移動、ホイールで拡大・縮小が可能な一定の大きさの方眼紙を作成する。
+ *   - ドラッグ移動時はビューが方眼紙からはみ出さないよう、端で見えない壁にぶつかる仕様。
+ *   - 方眼紙が画面全体に収まっている場合は、上記の挙動は行わない。
+ */
 export class GridPaper {
 
     constructor(canvasId, boardWidth, boardHeight, gridSize,

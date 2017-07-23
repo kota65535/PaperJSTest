@@ -59,8 +59,6 @@ window.onload = function () {
         $("#canvasPoint")[0].innerHTML = "canvas point: " + gridPaper.canvasPoint.x + ", " + gridPaper.canvasPoint.y;
     });
 
-
-    // ホイールの移動量に応じてビューを拡大・縮小する。
     window.addEventListener("mousewheel", function(e) {
         gridPaper.windowOnMouseWheel(e);
 
