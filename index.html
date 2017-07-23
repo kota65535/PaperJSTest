@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style type="text/css">
+        html,
+        body {
+            margin: 0;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        #wrapper {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: 100px;
+        }
+
+        /* Scale canvas with resize attribute to full size */
+        canvas[resize] {
+            position: fixed;
+            top: 100px;
+            width: 100%;
+            height: calc(100% - 100px);
+        }
+    </style>
+    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.11.4/paper-full.js"></script>
+    <script type="text/javascript" src="paper-full.js"></script>
+</head>
+<body>
+<div id="wrapper">
+    <div id="downPoint">downPoint</div>
+    <div id="eventPoint">eventPoint</div>
+    <div id="delta">delta</div>
+    <div id="cursorPoint">cusorPoint</div>
+    <div id="cursorDelta">cusorDelta</div>
+    <div id="wheelDelta">wheelDelta</div>
+    <div id="canvasPoint">canvasPoint</div>
+    <div id="canvasSize">canvasSize</div>
+    <div id="viewSize">viweSize</div>
+    <div id="viewCenter">viewCenter</div>
+    <div id="viewRange">viewRange</div>
+</div>
+<canvas id="myCanvas" resize></canvas>
+</body>
+<script>
+
+    var cursorPoint;    // ページ上のマウスカーソルの位置
+    var cursorDelta;    // ページ上のマウスカーソルの前フレーム位置との差分
+    var canvasPoint;    // キャンバス上のマウスカーソルの位置
+    var BOARD_WIDTH = 6000;
+    var BOARD_HEIGHT = 4000;
+    var VIEW_CENTER_MIN;
+    var VIEW_CENTER_MAX;
+    var BOARD_MIN;
+    var BOARD_MAX;
+    var INITIAL_VIEW_SIZE;
+    paper.install(window);
+    window.onload = function () {
+        paper.install(window);
+        paper.setup("myCanvas");
+
+        // center of the view at first
+        var path = new Path.Circle({
+            center: view.center,
+            radius: 50,
+            fillColor: 'blue'
+        });
+
+        var canvasWidth = $("#myCanvas")[0].width;
+        var canvasHeight = $("#myCanvas")[0].height;
+
+        // right bottom of the view
+        new Path.Circle({
+            center: new Point(canvasWidth, canvasHeight),
+            radius: 50,
+            fillColor: 'blue'
+        });
+
+        // center of the board & top-left of the view at first
+        new Path.Circle({
+            center: new Point(0,0),
+            radius: 50,
+            fillColor: 'blue'
+        });
+
+
+        INITIAL_VIEW_SIZE = new Size(view.size);
+        VIEW_CENTER_MIN = new Point(view.size.width - BOARD_WIDTH/2, view.size.height - BOARD_HEIGHT/2);
+        VIEW_CENTER_MAX = new Point(BOARD_WIDTH/2, BOARD_HEIGHT/2);
+        BOARD_MIN = new Point(view.size.width/2 - BOARD_WIDTH/2, view.size.height/2 - BOARD_HEIGHT/2);
+        BOARD_MAX = new Point(view.size.width/2 + BOARD_WIDTH/2, view.size.height/2 + BOARD_HEIGHT/2);
+
+        console.log("VIEW_CENTER_MIN ", VIEW_CENTER_MIN);
+        console.log("VIEW_CENTER_MAX ", VIEW_CENTER_MAX);
+        console.log("BOARD_MIN ", BOARD_MIN);
+        console.log("BOARD_MAX ", BOARD_MAX);
+
+        // top-left of the board
+        new Path.Circle({
+            center: BOARD_MIN,
+            radius: 100,
+            fillColor: 'green'
+        });
+
+        // bottom-right of the board
+        new Path.Circle({
+            center: BOARD_MAX,
+            radius: 100,
+            fillColor: 'green'
+        });
+
+        // top-left of the center of view
+        new Path.Circle({
+            center: VIEW_CENTER_MIN,
+            radius: 50,
+            fillColor: 'red'
+        });
+
+        // bottom-right of the center of view
+        new Path.Circle({
+            center: VIEW_CENTER_MAX,
+            radius: 50,
+            fillColor: 'red'
+        });
+
+//        new Path.Circle({
+//            center: new Point(-width, height*2),
+//            radius: 100,
+//            fillColor: 'green'
+//        });
+//        new Path.Circle({
+//            center: new Point(width*2, height*2),
+//            radius: 100,
+//            fillColor: 'green'
+//        });
+//        new Path.Circle({
+//            center: new Point(width*2, -height),
+//            radius: 100,
+//            fillColor: 'green'
+//        });
+//        new Path.Circle({
+//            center: new Point(width*2, 0),
+//            radius: 100,
+//            fillColor: 'green'
+//        });
+//        new Path.Circle({
+//            center: new Point(width*2, height),
+//            radius: 100,
+//            fillColor: 'green'
+//        });
+//        new Path.Circle({
+//            center: new Point(width*2, height*2),
+//            radius: 100,
+//            fillColor: 'green'
+//        });
+
+
+        createGrid(50);
+
+//        view.viewSize = new Size(view.size.width/2, view.size.height/2);
+
+        $("#canvasSize")[0].innerHTML = "canvas size: " + $("#myCanvas")[0].width + ", " + $("#myCanvas")[0].height;
+        $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
+
+        var tool = new Tool();
+
+        tool.onMouseMove = function (event) {
+            $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
+            $("#delta")[0].innerHTML = "delta: " + event.delta.x + ", " + event.delta.y;
+        }
+
+        tool.onMouseDown = function (event) {
+            $("#downPoint")[0].innerHTML = "down point: " + event.downPoint.x + ", " + event.downPoint.y;
+            $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
+        }
+
+        // カーソルの移動量に応じてビューを移動
+        tool.onMouseDrag = function (event) {
+            // 移動量をスケールに応じて変化させる
+            var moveUnit = 1 / view.getScaling().x;
+            var nextCenter = view.center.subtract(cursorDelta.multiply(moveUnit));
+
+            // カーソル位置が制限領域を出ていれば制限
+            if ( nextCenter.x < VIEW_CENTER_MIN.x ) {
+                nextCenter = new Point(VIEW_CENTER_MIN.x, nextCenter.y);
+            }
+            if ( VIEW_CENTER_MAX.x < nextCenter.x ) {
+                nextCenter = new Point(VIEW_CENTER_MAX.x, nextCenter.y);
+            }
+            if ( nextCenter.y < VIEW_CENTER_MIN.y ) {
+                nextCenter = new Point(nextCenter.x, VIEW_CENTER_MIN.y);
+            }
+            if ( VIEW_CENTER_MAX.y < nextCenter.y ) {
+                nextCenter = new Point(nextCenter.x, VIEW_CENTER_MAX.y);
+            }
+
+            view.center = nextCenter;
+
+            $("#viewRange")[0].innerHTML = "view range: (" + VIEW_CENTER_MIN.x + "," + VIEW_CENTER_MIN.y + ") - (" + VIEW_CENTER_MAX.x + "," + VIEW_CENTER_MAX.y + ")";
+            $("#viewCenter")[0].innerHTML = "view center: " + view.center.x + ", " + view.center.y;
+
+        }
+
+
+        window.addEventListener('mousemove', function(e){
+            // ページ上のマウスカーソルの位置を更新
+            var cursorBefore = cursorPoint;
+            cursorPoint = new Point(e.pageX, e.pageY);
+            cursorDelta = cursorPoint.subtract(cursorBefore);
+
+            // キャンバス上のマウスカーソルの位置を更新
+            var point = paper.DomEvent.getOffset(e, $('#myCanvas')[0]);
+            canvasPoint = paper.view.viewToProject(point);
+
+            $("#cursorPoint")[0].innerHTML = "cursor point: " + cursorPoint.x + ", " + cursorPoint.y;
+            $("#cursorDelta")[0].innerHTML = "cursor delta: " + cursorDelta.x + ", " + cursorDelta.y;
+            $("#canvasPoint")[0].innerHTML = "canvas point: " + point.x + ", " + point.y;
+        });
+
+
+        window.addEventListener("mousewheel", function(e) {
+
+            $("#wheelDelta")[0].innerHTML = "wheelDelta: " + e.wheelDelta;
+
+            var ZOOM_UNIT = 0.002;
+            var AVAILABLE_ZOOM_MIN = 0.2;
+            var AVAILABLE_ZOOM_MAX = 5;
+
+            // ホイールの移動量に応じてビューを拡大・縮小する
+            var newRelativeScale = 1 + ZOOM_UNIT * e.wheelDelta;
+            var newScale = view.getScaling().x * newRelativeScale;
+
+            // 最大拡大率・最小縮小率を超える場合はそこで留める
+            if (newScale < AVAILABLE_ZOOM_MIN) {
+                newRelativeScale = AVAILABLE_ZOOM_MIN / view.getScaling().x;
+            }
+            if (AVAILABLE_ZOOM_MAX < newScale) {
+                newRelativeScale = AVAILABLE_ZOOM_MAX / view.getScaling().x;
+            }
+
+            view.scale(newRelativeScale, canvasPoint);
+            console.info("currentZoom: ", newScale);
+
+
+            // スケールが1より大きい場合は、ビューサイズが小さくなることで端が見えなくなるので、ビュー中心の移動可能範囲を拡大する
+            if (1 < newScale) {
+                VIEW_CENTER_MIN = new Point(
+                    INITIAL_VIEW_SIZE.width/2 + view.size.width/2 - BOARD_WIDTH/2,
+                    INITIAL_VIEW_SIZE.height/2 + view.size.height/2 - BOARD_HEIGHT/2);
+                VIEW_CENTER_MAX = new Point(
+                    INITIAL_VIEW_SIZE.width/2 - view.size.width/2 +  BOARD_WIDTH/2,
+                    INITIAL_VIEW_SIZE.height/2 - view.size.height/2 + BOARD_HEIGHT/2);
+//                new Path.Circle({
+//                    center: VIEW_CENTER_MIN,
+//                    radius: 100,
+//                    fillColor: 'green'
+//                });
+//                new Path.Circle({
+//                    center: VIEW_CENTER_MAX,
+//                    radius: 100,
+//                    fillColor: 'green'
+//                });
+            }
+        })
+
+
+//        view.scale(0.5, view.center)
+
+    };
+
+    function createGrid(size) {
+        var canvas = $("#myCanvas")[0];
+
+        let rangeX = _.range(Math.floor(BOARD_MIN.x / size), Math.floor(BOARD_MAX.x / size));
+        let rangeY = _.range(Math.floor(BOARD_MIN.y / size), Math.floor(BOARD_MAX.y / size));
+        var line;
+        // 縦線
+        rangeX.forEach( function (i) {
+            line = new Path.Line(new paper.Point(size * i, BOARD_MIN.y), new paper.Point(size * i, BOARD_MAX.y));
+            if (i === 0) {
+                line.strokeColor = 'red';
+                line.strokeWidth = 3;
+            } else if (i % 4 === 0) {
+                line.strokeColor = 'grey';
+                line.strokeWidth = 3;
+            } else {
+                line.strokeColor = 'grey';
+            }
+        });
+        // 横線
+        rangeY.forEach( function(i) {
+            line = new Path.Line(new paper.Point(BOARD_MIN.x, size*i), new paper.Point(BOARD_MAX.x, size*i));
+            if (i === 0) {
+                line.strokeColor = 'red';
+                line.strokeWidth = 3;
+            } else if (i % 4 ===0) {
+                line.strokeColor = 'grey';
+                line.strokeWidth = 3;
+            } else {
+                line.strokeColor = 'grey';
+            }
+        })
+//        for (var i=-numX; i <= numX*2 ; i++) {
+//        }
+//        // 横線
+//        for (var i=-numY ; i <= numY*2 ; i++) {
+//        }
+    }
+</script>
+</html>
+
