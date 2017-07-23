@@ -7,7 +7,7 @@ import {GridPaper} from "./GridPaper";
 var BOARD_WIDTH = 6000;     // ボード幅
 var BOARD_HEIGHT = 4000;    // ボード高さ
 var GRID_SIZE = 50;
-var INITIAL_ZOOM = 0.8;
+var INITIAL_ZOOM = 0.7;
 var ZOOM_UNIT = 0.002;
 var AVAILABLE_ZOOM_MIN = 0.2;
 var AVAILABLE_ZOOM_MAX = 5;
@@ -63,7 +63,9 @@ window.onload = function () {
     // ホイールの移動量に応じてビューを拡大・縮小する。
     window.addEventListener("mousewheel", function(e) {
         gridPaper.windowOnMouseWheel(e);
+
+        $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
     });
 
-    view.scale(INITIAL_ZOOM, view.center);
+
 };

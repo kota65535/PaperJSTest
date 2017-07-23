@@ -91,6 +91,8 @@ export class GridPaper {
         });
 
         this._createGrids(this.gridSize);
+
+        this.scale(this.initialZoom);
     }
 
     _createGrids(size) {
@@ -179,13 +181,17 @@ export class GridPaper {
      * @param e
      */
     windowOnMouseWheel(e) {
-        $("#wheelDelta")[0].innerHTML = "wheelDelta: " + e.wheelDelta;
+        console.log("wheelDelta: " + e.wheelDelta);
 
         // scale()に与える率は、現在からの相対値
         let newRelativeScale = 1 + this.zoomUnit * e.wheelDelta;
-        let newScale = view.getScaling().x * newRelativeScale;
+        this.scale(newRelativeScale);
+    }
 
+
+    scale(newRelativeScale) {
         // 最大拡大率・最小縮小率を超えないようにする
+        let newScale = view.getScaling().x * newRelativeScale;
         if (newScale < this.zoomMin) {
             newRelativeScale = this.zoomMin / view.getScaling().x;
         }
@@ -195,8 +201,6 @@ export class GridPaper {
 
         view.scale(newRelativeScale, this.canvasPoint);
         console.info("currentZoom: ", newScale);
-
-        $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
 
         // ビューの端がボードの範囲を超えないよう、ビュー中心の移動可能範囲を変更する
         if (view.size.width < this.boardWidth && view.size.height < this.boardHeight) {
