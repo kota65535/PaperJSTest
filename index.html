@@ -49,16 +49,23 @@
 </body>
 <script>
 
-    var cursorPoint;    // ページ上のマウスカーソルの位置
-    var cursorDelta;    // ページ上のマウスカーソルの前フレーム位置との差分
-    var canvasPoint;    // キャンバス上のマウスカーソルの位置
-    var BOARD_WIDTH = 6000;
-    var BOARD_HEIGHT = 4000;
-    var VIEW_CENTER_MIN;
-    var VIEW_CENTER_MAX;
-    var BOARD_MIN;
-    var BOARD_MAX;
-    var INITIAL_VIEW_SIZE;
+    var BOARD_WIDTH = 6000;     // ボード幅
+    var BOARD_HEIGHT = 4000;    // ボード高さ
+    var INITIAL_ZOOM = 0.8;
+    var ZOOM_UNIT = 0.002;
+    var AVAILABLE_ZOOM_MIN = 0.2;
+    var AVAILABLE_ZOOM_MAX = 5;
+
+    var cursorPoint;        // ページ上のマウスカーソルの位置
+    var cursorDelta;        // ページ上のマウスカーソルの前フレーム位置との差分
+    var canvasPoint;        // キャンバス上のマウスカーソルの位置
+    var viewCenterMin;      // ビュー中心点の最小(左上)位置
+    var viewCenterMax;      // ビュー中心点の最大(右下)位置
+    var initialViewSize;    // 初期ビューサイズ
+    var boardMin;           // ボードの最小(左上)位置
+    var boardMax;           // ボードの最大(右下)位置
+    var shouldModifyViewCenter = true;      // ビュー中心点が移動可能範囲を超えたときに修正するか否かのフラグ
+
     paper.install(window);
     window.onload = function () {
         paper.install(window);
@@ -89,41 +96,41 @@
         });
 
 
-        INITIAL_VIEW_SIZE = new Size(view.size);
-        VIEW_CENTER_MIN = new Point(view.size.width - BOARD_WIDTH/2, view.size.height - BOARD_HEIGHT/2);
-        VIEW_CENTER_MAX = new Point(BOARD_WIDTH/2, BOARD_HEIGHT/2);
-        BOARD_MIN = new Point(view.size.width/2 - BOARD_WIDTH/2, view.size.height/2 - BOARD_HEIGHT/2);
-        BOARD_MAX = new Point(view.size.width/2 + BOARD_WIDTH/2, view.size.height/2 + BOARD_HEIGHT/2);
+        initialViewSize = new Size(view.size);
+        viewCenterMin = new Point(view.size.width - BOARD_WIDTH/2, view.size.height - BOARD_HEIGHT/2);
+        viewCenterMax = new Point(BOARD_WIDTH/2, BOARD_HEIGHT/2);
+        boardMin = new Point(view.size.width/2 - BOARD_WIDTH/2, view.size.height/2 - BOARD_HEIGHT/2);
+        boardMax = new Point(view.size.width/2 + BOARD_WIDTH/2, view.size.height/2 + BOARD_HEIGHT/2);
 
-        console.log("VIEW_CENTER_MIN ", VIEW_CENTER_MIN);
-        console.log("VIEW_CENTER_MAX ", VIEW_CENTER_MAX);
-        console.log("BOARD_MIN ", BOARD_MIN);
-        console.log("BOARD_MAX ", BOARD_MAX);
+        console.log("viewCenterMin ", viewCenterMin);
+        console.log("viewCenterMax ", viewCenterMax);
+        console.log("boardMin ", boardMin);
+        console.log("boardMax ", boardMax);
 
         // top-left of the board
         new Path.Circle({
-            center: BOARD_MIN,
+            center: boardMin,
             radius: 100,
             fillColor: 'green'
         });
 
         // bottom-right of the board
         new Path.Circle({
-            center: BOARD_MAX,
+            center: boardMax,
             radius: 100,
             fillColor: 'green'
         });
 
         // top-left of the center of view
         new Path.Circle({
-            center: VIEW_CENTER_MIN,
+            center: viewCenterMin,
             radius: 50,
             fillColor: 'red'
         });
 
         // bottom-right of the center of view
         new Path.Circle({
-            center: VIEW_CENTER_MAX,
+            center: viewCenterMax,
             radius: 50,
             fillColor: 'red'
         });
@@ -179,32 +186,35 @@
             $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
         }
 
-        // カーソルの移動量に応じてビューを移動
+        // カーソルの移動量に応じてビューを移動させる。
+        // 移動量はページ上のマウスカーソルの位置を利用する。
+        // 注: キャンバス上のマウスカーソルの位置は使えない。
         tool.onMouseDrag = function (event) {
             // 移動量をスケールに応じて変化させる
             var moveUnit = 1 / view.getScaling().x;
             var nextCenter = view.center.subtract(cursorDelta.multiply(moveUnit));
 
-            // カーソル位置が制限領域を出ていれば制限
-            if ( nextCenter.x < VIEW_CENTER_MIN.x ) {
-                nextCenter = new Point(VIEW_CENTER_MIN.x, nextCenter.y);
-            }
-            if ( VIEW_CENTER_MAX.x < nextCenter.x ) {
-                nextCenter = new Point(VIEW_CENTER_MAX.x, nextCenter.y);
-            }
-            if ( nextCenter.y < VIEW_CENTER_MIN.y ) {
-                nextCenter = new Point(nextCenter.x, VIEW_CENTER_MIN.y);
-            }
-            if ( VIEW_CENTER_MAX.y < nextCenter.y ) {
-                nextCenter = new Point(nextCenter.x, VIEW_CENTER_MAX.y);
+            if (shouldModifyViewCenter) {
+                // ビューの中心点が移動可能領域からはみ出さないようにする
+                if ( nextCenter.x < viewCenterMin.x ) {
+                    nextCenter = new Point(viewCenterMin.x, nextCenter.y);
+                }
+                if ( viewCenterMax.x < nextCenter.x ) {
+                    nextCenter = new Point(viewCenterMax.x, nextCenter.y);
+                }
+                if ( nextCenter.y < viewCenterMin.y ) {
+                    nextCenter = new Point(nextCenter.x, viewCenterMin.y);
+                }
+                if ( viewCenterMax.y < nextCenter.y ) {
+                    nextCenter = new Point(nextCenter.x, viewCenterMax.y);
+                }
             }
 
             view.center = nextCenter;
 
-            $("#viewRange")[0].innerHTML = "view range: (" + VIEW_CENTER_MIN.x + "," + VIEW_CENTER_MIN.y + ") - (" + VIEW_CENTER_MAX.x + "," + VIEW_CENTER_MAX.y + ")";
+            $("#viewRange")[0].innerHTML = "view range: (" + viewCenterMin.x + "," + viewCenterMin.y + ") - (" + viewCenterMax.x + "," + viewCenterMax.y + ")";
             $("#viewCenter")[0].innerHTML = "view center: " + view.center.x + ", " + view.center.y;
-
-        }
+        };
 
 
         window.addEventListener('mousemove', function(e){
@@ -223,19 +233,16 @@
         });
 
 
+        // ホイールの移動量に応じてビューを拡大・縮小する。
         window.addEventListener("mousewheel", function(e) {
 
             $("#wheelDelta")[0].innerHTML = "wheelDelta: " + e.wheelDelta;
 
-            var ZOOM_UNIT = 0.002;
-            var AVAILABLE_ZOOM_MIN = 0.2;
-            var AVAILABLE_ZOOM_MAX = 5;
-
-            // ホイールの移動量に応じてビューを拡大・縮小する
+            // scale()に与える率は、現在からの相対値
             var newRelativeScale = 1 + ZOOM_UNIT * e.wheelDelta;
             var newScale = view.getScaling().x * newRelativeScale;
 
-            // 最大拡大率・最小縮小率を超える場合はそこで留める
+            // 最大拡大率・最小縮小率を超えないようにする
             if (newScale < AVAILABLE_ZOOM_MIN) {
                 newRelativeScale = AVAILABLE_ZOOM_MIN / view.getScaling().x;
             }
@@ -246,42 +253,37 @@
             view.scale(newRelativeScale, canvasPoint);
             console.info("currentZoom: ", newScale);
 
+            $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
 
-            // スケールが1より大きい場合は、ビューサイズが小さくなることで端が見えなくなるので、ビュー中心の移動可能範囲を拡大する
-            if (1 < newScale) {
-                VIEW_CENTER_MIN = new Point(
-                    INITIAL_VIEW_SIZE.width/2 + view.size.width/2 - BOARD_WIDTH/2,
-                    INITIAL_VIEW_SIZE.height/2 + view.size.height/2 - BOARD_HEIGHT/2);
-                VIEW_CENTER_MAX = new Point(
-                    INITIAL_VIEW_SIZE.width/2 - view.size.width/2 +  BOARD_WIDTH/2,
-                    INITIAL_VIEW_SIZE.height/2 - view.size.height/2 + BOARD_HEIGHT/2);
-//                new Path.Circle({
-//                    center: VIEW_CENTER_MIN,
-//                    radius: 100,
-//                    fillColor: 'green'
-//                });
-//                new Path.Circle({
-//                    center: VIEW_CENTER_MAX,
-//                    radius: 100,
-//                    fillColor: 'green'
-//                });
+            // ビューの端がボードの範囲を超えないよう、ビュー中心の移動可能範囲を変更する
+            if (view.size.width < BOARD_WIDTH && view.size.height < BOARD_HEIGHT) {
+                viewCenterMin = new Point(
+                    initialViewSize.width / 2 + view.size.width / 2 - BOARD_WIDTH / 2,
+                    initialViewSize.height / 2 + view.size.height / 2 - BOARD_HEIGHT / 2);
+                viewCenterMax = new Point(
+                    initialViewSize.width / 2 - view.size.width / 2 + BOARD_WIDTH / 2,
+                    initialViewSize.height / 2 - view.size.height / 2 + BOARD_HEIGHT / 2);
+                shouldModifyViewCenter = true;
+            } else {
+                // ビューサイズがボードの幅または高さを超えた場合は、ビューの中心点の修正を行わない。
+                shouldModifyViewCenter = false;
             }
-        })
 
+        });
 
-//        view.scale(0.5, view.center)
-
+//        view.scale(INITIAL_ZOOM, view.center);
     };
+
 
     function createGrid(size) {
         var canvas = $("#myCanvas")[0];
 
-        let rangeX = _.range(Math.floor(BOARD_MIN.x / size), Math.floor(BOARD_MAX.x / size));
-        let rangeY = _.range(Math.floor(BOARD_MIN.y / size), Math.floor(BOARD_MAX.y / size));
+        let rangeX = _.range(Math.floor(boardMin.x / size), Math.floor(boardMax.x / size));
+        let rangeY = _.range(Math.floor(boardMin.y / size), Math.floor(boardMax.y / size));
         var line;
         // 縦線
         rangeX.forEach( function (i) {
-            line = new Path.Line(new paper.Point(size * i, BOARD_MIN.y), new paper.Point(size * i, BOARD_MAX.y));
+            line = new Path.Line(new paper.Point(size * i, boardMin.y), new paper.Point(size * i, boardMax.y));
             if (i === 0) {
                 line.strokeColor = 'red';
                 line.strokeWidth = 3;
@@ -294,7 +296,7 @@
         });
         // 横線
         rangeY.forEach( function(i) {
-            line = new Path.Line(new paper.Point(BOARD_MIN.x, size*i), new paper.Point(BOARD_MAX.x, size*i));
+            line = new Path.Line(new paper.Point(boardMin.x, size*i), new paper.Point(boardMax.x, size*i));
             if (i === 0) {
                 line.strokeColor = 'red';
                 line.strokeWidth = 3;
