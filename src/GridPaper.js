@@ -28,6 +28,9 @@ export class GridPaper {
         this.zoomMin = zoomMin;
         this.zoomMax = zoomMax;
 
+        this.isRectSelecting = false;   // 矩形選択中か否か
+        this.paths = [];                // 矩形選択可能なパス
+
         this._init();
     }
 
@@ -44,25 +47,25 @@ export class GridPaper {
         console.log("boardMax ", this.boardMax);
 
         // center of the view at first
-        new Path.Circle({
+        this.paths.push(new Path.Circle({
             center: view.center,
             radius: 50,
             fillColor: 'blue'
-        });
+        }));
 
         // right bottom of the view
-        new Path.Circle({
+        this.paths.push(new Path.Circle({
             center: new Point(this.canvasElem.width, this.canvasElem.height),
             radius: 50,
             fillColor: 'blue'
-        });
+        }));
 
         // center of the board & top-left of the view at first
-        new Path.Circle({
+        this.paths.push(new Path.Circle({
             center: new Point(0, 0),
             radius: 50,
             fillColor: 'blue'
-        });
+        }));
 
 
         // top-left of the board
@@ -92,6 +95,15 @@ export class GridPaper {
             radius: 50,
             fillColor: 'red'
         });
+
+        this.paths.push(new Path.Rectangle({
+            from: new Point(140, 20),
+            to: new Point(200, 80),
+            strokeColor: 'black',
+            strokeWidth: 3,
+            fillColor: "blue",
+            opacity: 0.5
+        }));
 
         this._createGrids(this.gridSize);
 
@@ -131,12 +143,65 @@ export class GridPaper {
 
 
     /**
+     * マウスボタンを押した時のハンドラ。
+     * shiftが押されていた場合、矩形選択を開始する。
+     * @param event
+     */
+    paperOnMouseDown(event) {
+        if (event.modifiers.shift && !this.isRectSelecting) {
+            console.info("begin rectangle selection");
+            this.isRectSelecting = true;
+            this.rectStart = event.point;
+        }
+    }
+
+    /**
+     * マウスボタンを離した時のハンドラ。
+     * 矩形選択中の場合、矩形選択を終了する。
+     * @param event
+     */
+    paperOnMouseUp(event) {
+        if (this.isRectSelecting) {
+            console.info("end rectangle selection");
+
+            // 矩形の内側または重なる図形があれば選択状態にする
+            this.paths.forEach(path => {
+                if (path.isInside(this.selectionRect.bounds) || path.intersects(this.selectionRect)) {
+                    path.selected = true;
+                }
+            });
+
+            // 選択矩形を削除し、選択状態を解除する。
+            if (this.selectionRect) {
+                this.selectionRect.remove();
+            }
+            this.isRectSelecting = false;
+        }
+    }
+
+    /**
      * Paper.js の Tool.onMouseDrag() で実行させるハンドラ。
      * カーソルの移動量に応じてビューを移動させる。
      * 移動量の算出にはキャンバス上のマウスカーソルの位置ではなく、ページ上の位置を利用する。
+     * 矩形選択中の場合、選択範囲を表す矩形を表示する。
      * @param event
      */
     paperOnMouseDrag(event) {
+        if (this.isRectSelecting) {
+            if (this.selectionRect) {
+                this.selectionRect.remove();
+            }
+            this.selectionRect = new Path.Rectangle({
+                from: this.rectStart,
+                to: event.point,
+                strokeColor: 'blue',
+                strokeWidth: 2,
+                fillColor: "lightskyblue",
+                opacity: 0.5
+            });
+            return;
+        }
+
         // 移動量をスケールに応じて変化させる
         let moveUnit = 1 / view.getScaling().x;
         let nextCenter = view.center.subtract(this.cursorDelta.multiply(moveUnit));

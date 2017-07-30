@@ -13,15 +13,25 @@ var AVAILABLE_ZOOM_MIN = 0.2;
 var AVAILABLE_ZOOM_MAX = 5;
 
 
+
+function testNamedArgs({size = 'big', cords = { x: 0, y: 0 }, radius = 25} = {}) {
+    console.log(size, cords, radius);
+    // do some chart drawing
+}
+
+let gridPaper;
+
 paper.install(window);
 window.onload = function () {
     paper.install(window);
     paper.setup("myCanvas");
 
-    let gridPaper = new GridPaper("myCanvas", BOARD_WIDTH, BOARD_HEIGHT, GRID_SIZE,
+    gridPaper = new GridPaper("myCanvas", BOARD_WIDTH, BOARD_HEIGHT, GRID_SIZE,
         INITIAL_ZOOM, ZOOM_UNIT, AVAILABLE_ZOOM_MIN, AVAILABLE_ZOOM_MAX);
 
     // gridPaper.init();
+
+    testNamedArgs({size: "small"});
 
     let canvasElem = $("#myCanvas")[0];
 
@@ -31,25 +41,30 @@ window.onload = function () {
 
     let tool = new Tool();
 
-    tool.onMouseMove = function (event) {
+    tool.onMouseMove = (event) => {
         $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
         $("#delta")[0].innerHTML = "delta: " + event.delta.x + ", " + event.delta.y;
         $("#canvasSize")[0].innerHTML = "canvas size: " + canvasElem.width + ", " + canvasElem.height;
         $("#viewSize")[0].innerHTML = "view size: " + view.size.width + ", " + view.size.height;
     };
 
-    tool.onMouseDown = function (event) {
+    tool.onMouseDown = (event) => {
+        gridPaper.paperOnMouseDown(event);
         $("#downPoint")[0].innerHTML = "down point: " + event.downPoint.x + ", " + event.downPoint.y;
         $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
     };
 
-    tool.onMouseDrag = function (event) {
+    tool.onMouseDrag = (event) => {
         gridPaper.paperOnMouseDrag(event);
-
         $("#viewRange")[0].innerHTML = "view range: (" + gridPaper.viewCenterMin.x + "," + gridPaper.viewCenterMin.y + ") - (" + gridPaper.viewCenterMax.x + "," + gridPaper.viewCenterMax.y + ")";
         $("#viewCenter")[0].innerHTML = "view center: " + view.center.x + ", " + view.center.y;
     };
 
+    tool.onMouseUp = (event) => {
+        gridPaper.paperOnMouseUp(event);
+        $("#downPoint")[0].innerHTML = "down point: " + event.downPoint.x + ", " + event.downPoint.y;
+        $("#eventPoint")[0].innerHTML = "event point: " + event.point.x + ", " + event.point.y;
+    };
 
     window.addEventListener('mousemove', function(e){
         gridPaper.windowOnMouseMove(e);
